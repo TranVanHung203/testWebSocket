@@ -477,84 +477,78 @@ handleServerMessage = function(data) {
 window.addEventListener('beforeunload', disconnectAllPeers);
 startLocalMedia();
 
-// ==== BÀN CỜ VUA ONLINE ====
-const PIECES = {
-  wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙',
-  bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟',
-};
-let chessState = null;
+// ==== BÀN CỜ VUA ONLINE (chess.js) ====
+let chess = new Chess();
 let selectedSquare = null;
-
-function getInitialChessState() {
-  return [
-    ['bR','bN','bB','bQ','bK','bB','bN','bR'],
-    ['bP','bP','bP','bP','bP','bP','bP','bP'],
-    [null,null,null,null,null,null,null,null],
-    [null,null,null,null,null,null,null,null],
-    [null,null,null,null,null,null,null,null],
-    [null,null,null,null,null,null,null,null],
-    ['wP','wP','wP','wP','wP','wP','wP','wP'],
-    ['wR','wN','wB','wQ','wK','wB','wN','wR'],
-  ];
-}
+const PIECE_UNICODE = {
+  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
+  K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
+};
 
 function renderChessboard() {
   const board = document.getElementById('chessboard');
   board.innerHTML = '';
+  const pos = chess.board();
   for (let row = 0; row < 8; ++row) {
     for (let col = 0; col < 8; ++col) {
       const sq = document.createElement('div');
       sq.className = 'chess-square ' + ((row+col)%2===0 ? 'white' : 'black');
-      sq.dataset.row = row;
-      sq.dataset.col = col;
-      if (selectedSquare && selectedSquare[0] === row && selectedSquare[1] === col) {
-        sq.classList.add('selected');
-      }
-      const piece = chessState[row][col];
-      if (piece) sq.textContent = PIECES[piece] || '';
-      sq.onclick = () => onChessSquareClick(row, col);
+      const file = String.fromCharCode('a'.charCodeAt(0) + col);
+      const rank = 8 - row;
+      const square = file + rank;
+      sq.dataset.square = square;
+      if (selectedSquare === square) sq.classList.add('selected');
+      const piece = pos[row][col];
+      if (piece) sq.textContent = PIECE_UNICODE[piece.color === 'w' ? piece.type.toUpperCase() : piece.type] || '';
+      sq.onclick = () => onChessSquareClick(square);
       board.appendChild(sq);
     }
   }
+  updateChessStatus(getChessStatus());
 }
 
-function onChessSquareClick(row, col) {
-  const piece = chessState[row][col];
+function onChessSquareClick(square) {
   if (selectedSquare) {
-    const [fromRow, fromCol] = selectedSquare;
-    if (fromRow !== row || fromCol !== col) {
-      const move = { from: [fromRow, fromCol], to: [row, col], piece: chessState[fromRow][fromCol], captured: chessState[row][col] };
-      chessState[row][col] = chessState[fromRow][fromCol];
-      chessState[fromRow][fromCol] = null;
+    const move = chess.move({ from: selectedSquare, to: square, promotion: 'q' });
+    if (move) {
       selectedSquare = null;
       renderChessboard();
-      updateChessStatus('');
-      sendWs({ type: 'chess_move', move });
+      sendWs({ type: 'chess_move', move: { fen: chess.fen(), last: move } });
+      if (chess.game_over()) updateChessStatus(getChessStatus());
     } else {
       selectedSquare = null;
       renderChessboard();
-      updateChessStatus('');
+      updateChessStatus('Nước đi không hợp lệ!');
     }
-  } else if (piece) {
-    selectedSquare = [row, col];
-    renderChessboard();
-    updateChessStatus('Chọn ô đích để di chuyển.');
+  } else {
+    // Chỉ cho chọn quân đúng lượt
+    const piece = chess.get(square);
+    if (piece && piece.color === chess.turn()) {
+      selectedSquare = square;
+      renderChessboard();
+      updateChessStatus('Chọn ô đích để di chuyển.');
+    }
   }
 }
 
 function applyRemoteChessMove(move) {
-  if (!move || !move.from || !move.to) return;
-  const [fromRow, fromCol] = move.from;
-  const [toRow, toCol] = move.to;
-  chessState[toRow][toCol] = chessState[fromRow][fromCol];
-  chessState[fromRow][fromCol] = null;
-  selectedSquare = null;
-  renderChessboard();
-  updateChessStatus('Đối thủ vừa đi nước mới.');
+  if (move && move.reset) {
+    chess.reset();
+    selectedSquare = null;
+    renderChessboard();
+    updateChessStatus('Đối thủ vừa reset bàn cờ.');
+    return;
+  }
+  if (move && move.fen) {
+    chess.load(move.fen);
+    selectedSquare = null;
+    renderChessboard();
+    updateChessStatus('Đối thủ vừa đi nước mới.');
+  }
 }
 
 function resetChessboard() {
-  chessState = getInitialChessState();
+  chess.reset();
   selectedSquare = null;
   renderChessboard();
   updateChessStatus('Bàn cờ đã được reset.');
@@ -567,25 +561,14 @@ function updateChessStatus(msg) {
   document.getElementById('chess-status').textContent = msg;
 }
 
-// Nhận reset từ người khác
-function applyRemoteChessMove(move) {
-  if (move && move.reset) {
-    chessState = getInitialChessState();
-    selectedSquare = null;
-    renderChessboard();
-    updateChessStatus('Đối thủ vừa reset bàn cờ.');
-    return;
-  }
-  if (!move || !move.from || !move.to) return;
-  const [fromRow, fromCol] = move.from;
-  const [toRow, toCol] = move.to;
-  chessState[toRow][toCol] = chessState[fromRow][fromCol];
-  chessState[fromRow][fromCol] = null;
-  selectedSquare = null;
-  renderChessboard();
-  updateChessStatus('Đối thủ vừa đi nước mới.');
+function getChessStatus() {
+  if (chess.in_checkmate()) return 'Chiếu hết! ' + (chess.turn() === 'w' ? 'Đen' : 'Trắng') + ' thắng.';
+  if (chess.in_stalemate()) return 'Hòa (Stalemate).';
+  if (chess.in_draw()) return 'Hòa.';
+  if (chess.in_check()) return 'Đang bị chiếu!';
+  return chess.turn() === 'w' ? 'Lượt Trắng.' : 'Lượt Đen.';
 }
 
 // Khởi tạo bàn cờ khi load trang
-chessState = getInitialChessState();
+chess = new Chess();
 renderChessboard();
