@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV Scanner + Gemini Review</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">WebSocket + Gemini</p>
+      <h1>Upload CV, quet text, danh gia theo prompt cua ban.</h1>
+      <p class="hero-copy">
+        1 trang duy nhat: ben trai la upload CV va nhan danh gia tu Gemini, ben phai la khung chat realtime
+        de trao doi voi nhung nguoi dang online.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="video-call-card">
+        <h2>Video Call (3-5 người)</h2>
+        <div class="video-grid" id="video-grid">
+          <video id="local-video" autoplay playsinline muted></video>
+          <video id="remote-video-1" autoplay playsinline></video>
+          <video id="remote-video-2" autoplay playsinline></video>
+          <video id="remote-video-3" autoplay playsinline></video>
+          <video id="remote-video-4" autoplay playsinline></video>
+        </div>
+        <div class="video-controls">
+          <button id="toggle-camera" class="btn btn-secondary" type="button">Bật/Tắt Camera</button>
+          <button id="toggle-mic" class="btn btn-secondary" type="button">Bật/Tắt Mic</button>
+        </div>
+      </section>
+
+      <section class="chessboard-card">
+        <h2>Bàn cờ vua online</h2>
+        <div id="chessboard" class="chessboard"></div>
+        <div class="chess-controls">
+          <button id="reset-chess" class="btn btn-secondary" type="button">Reset bàn cờ</button>
+          <span id="chess-status"></span>
+        </div>
+      </section>
+
+      <section class="panel panel-main">
+        <div class="panel-head">
+          <h2>CV Analyzer</h2>
+          <p>Ho tro: PDF, DOCX, TXT, PNG, JPG, WEBP (toi da 8MB)</p>
+        </div>
+
+        <form id="cv-form" class="cv-form">
+          <label class="field" for="cv-file-input">
+            <span>File CV</span>
+            <input
+              id="cv-file-input"
+              type="file"
+              name="cvFile"
+              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+              required
+            />
+          </label>
+
+          <label class="field" for="requirements-input">
+            <span>Yeu cau danh gia (prompt cua ban)</span>
+            <textarea
+              id="requirements-input"
+              name="requirements"
+              maxlength="4000"
+              placeholder="Vi du: Danh gia CV nay cho vi tri Frontend React 2+ nam, cham diem theo tieu chi ky nang, du an, giao tiep..."
+            ></textarea>
+            <small id="requirements-count">0 / 4000</small>
+          </label>
+
+          <div class="action-row">
+            <button id="analyze-btn" class="btn btn-primary" type="submit">Quet CV va danh gia</button>
+            <span id="analyze-status"></span>
+          </div>
+        </form>
+
+        <div class="result-grid">
+          <article class="result-card">
+            <div class="result-head">
+              <h3>Text trich xuat tu CV</h3>
+              <span id="extract-meta"></span>
+            </div>
+            <pre id="cv-text-output" class="result-box empty">Chua co du lieu.</pre>
+          </article>
+
+          <article class="result-card">
+            <div class="result-head">
+              <h3>Danh gia cua Gemini</h3>
+              <span id="review-meta"></span>
+            </div>
+            <pre id="review-output" class="result-box empty">Chua co ket qua.</pre>
+          </article>
+        </div>
+      </section>
+
+      <aside class="panel panel-chat">
+        <div class="chat-top">
+          <h2>Realtime Chat</h2>
+          <span id="online-count">Online: 0</span>
+        </div>
+
+        <div class="name-row">
+          <input id="name-input" type="text" maxlength="40" placeholder="Ten hien thi" />
+          <button id="name-save-btn" class="btn btn-secondary" type="button">Cap nhat ten</button>
+        </div>
+
+        <div id="presence-note"></div>
+
+        <div id="chat-list" aria-live="polite"></div>
+
+        <div class="chat-input-row">
+          <input id="chat-input" type="text" maxlength="700" placeholder="Nhap tin nhan..." />
+          <button id="chat-send-btn" class="btn btn-primary" type="button">Gui</button>
+        </div>
+
+        <section class="users-card">
+          <h3>Nguoi dang online</h3>
+          <ul id="users-list"></ul>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
