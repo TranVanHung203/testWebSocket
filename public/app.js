@@ -376,7 +376,17 @@ function handleSignal(from, data) {
 }
 
 function createPeerConnection(peerId) {
-  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  // Sử dụng cả STUN và TURN (Xirsys demo, public, chỉ dùng test)
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      {
+        urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+        username: 'webrtc',
+        credential: 'webrtc'
+      }
+    ]
+  });
   peerConnections[peerId] = pc;
   if (localStream) {
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
